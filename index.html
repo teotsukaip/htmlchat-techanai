@@ -6,36 +6,37 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#075e54" />
-
   <style>
     * { box-sizing: border-box; }
+
     body {
       margin: 0;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       background: #e5ddd5;
-      overflow: hidden;
+      overflow: hidden;          /* 画面全体はスクロールさせない */
     }
 
+    /* 画面全体コンテナ（高さは JS で innerHeight に合わせる） */
     .app {
-      height: 100dvh;
       max-width: 480px;
       margin: 0 auto;
+      background: #e5ddd5;
       display: flex;
       flex-direction: column;
-      background: #e5ddd5;
       border-left: 1px solid #ccc;
       border-right: 1px solid #ccc;
+      height: 100%;              /* JS で上書きされる */
     }
 
-    /* ==== Header ==== */
+    /* ==== HEADER ==== */
     .header {
-      flex: 0 0 52px;
+      flex: 0 0 auto;
       background: #075e54;
-      color: white;
+      color: #fff;
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      padding: 0 12px;
+      justify-content: space-between;
+      padding: 8px 12px;
       font-size: 16px;
       font-weight: 600;
     }
@@ -49,7 +50,7 @@
       cursor: pointer;
     }
 
-    /* ==== Messages ==== */
+    /* ==== メッセージエリア（ここだけスクロール） ==== */
     .messages {
       flex: 1 1 auto;
       overflow-y: auto;
@@ -57,42 +58,45 @@
       display: flex;
       flex-direction: column;
       gap: 8px;
+      -webkit-overflow-scrolling: touch;
+      background: #e5ddd5;
     }
 
-    /* ==== Input ==== */
+    /* ==== フッター（入力欄） ==== */
     .input-area {
-      flex: 0 0 60px;
+      flex: 0 0 auto;
       background: #f0f0f0;
       border-top: 1px solid #ccc;
       padding: 6px;
     }
     .input-form {
       display: flex;
-      height: 100%;
       gap: 6px;
+      align-items: center;
     }
     .input-form input {
       flex: 1;
       padding: 10px;
       font-size: 16px;
-      border: 1px solid #ccc;
       border-radius: 20px;
+      border: 1px solid #ccc;
     }
     .input-form button {
       border: none;
       border-radius: 20px;
-      padding: 0 14px;
+      padding: 8px 12px;
       font-size: 15px;
       cursor: pointer;
       white-space: nowrap;
     }
-    #sendButton { background: #25d366; color: #fff; }
-    #speakButton { background: #007aff; color: #fff; }
+    #sendButton  { background: #25d366; color:#fff; }
+    #speakButton { background: #007aff; color:#fff; }
 
-    /* ==== Bubbles ==== */
+    /* ==== 吹き出し ==== */
     .message-row { width: 100%; display: flex; }
     .message-row.user { justify-content: flex-end; }
     .message-row.assistant { justify-content: flex-start; }
+
     .bubble {
       max-width: 80%;
       padding: 9px 11px;
@@ -101,65 +105,71 @@
       line-height: 1.45;
       white-space: pre-wrap;
     }
-    .bubble.user { background: #25d366; color: white; border-bottom-right-radius: 0; }
-    .bubble.assistant { background: white; color: #111; border-bottom-left-radius: 0; }
-
+    .bubble.user {
+      background:#25d366;
+      color:#fff;
+      border-bottom-right-radius:0;
+    }
+    .bubble.assistant {
+      background:#fff;
+      color:#111;
+      border-bottom-left-radius:0;
+    }
     .timestamp {
-      font-size: 10px;
-      text-align: right;
-      margin-top: 2px;
-      color: #666;
+      font-size:10px;
+      color:#666;
+      margin-top:2px;
+      text-align:right;
     }
 
-    /* ==== API キーモーダル ==== */
+    /* ==== APIキー入力モーダル（中央ポップアップ） ==== */
     .modal-backdrop {
       position: fixed;
       inset: 0;
       background: rgba(0,0,0,0.45);
-      display: none;
+      display: none;               /* showModal() で flex に */
       align-items: center;
       justify-content: center;
       z-index: 1000;
-      pointer-events: auto;
     }
     .modal {
-      background: white;
-      padding: 18px;
-      border-radius: 10px;
-      width: 92%;
-      max-width: 340px;
-      text-align: center;
-      box-shadow: 0 6px 22px rgba(0,0,0,0.3);
-      animation: fadeIn 0.25s ease;
+      background:#fff;
+      padding:18px;
+      border-radius:10px;
+      width:92%;
+      max-width:340px;
+      box-shadow:0 6px 22px rgba(0,0,0,0.3);
+      text-align:center;
     }
-    @keyframes fadeIn { from { opacity: 0; transform: scale(.95); } }
-
-    .modal h3 { margin: 0 0 8px; font-size: 18px; }
+    .modal h3 {
+      margin: 0 0 8px;
+      font-size: 18px;
+    }
     .modal input {
-      width: 100%;
-      padding: 10px;
-      margin-top: 12px;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-      font-size: 16px;
+      width:100%;
+      margin-top:12px;
+      padding:10px;
+      font-size:16px;
+      border-radius:6px;
+      border:1px solid #ccc;
     }
     .modal button {
-      margin-top: 12px;
-      width: 100%;
-      padding: 10px;
-      background: #25d366;
-      border: none;
-      border-radius: 6px;
-      font-size: 16px;
-      color: white;
-      cursor: pointer;
+      margin-top:12px;
+      width:100%;
+      padding:10px;
+      font-size:16px;
+      border-radius:6px;
+      border:none;
+      background:#25d366;
+      color:#fff;
+      cursor:pointer;
     }
   </style>
 </head>
 <body>
-<div class="app">
+<div class="app" id="app">
   <header class="header">
-    🍺 てっちゃんAI ❤️
+    <span>🍺 てっちゃんAI ❤️</span>
     <button id="clearKeyButton">KEY削除</button>
   </header>
 
@@ -167,36 +177,48 @@
 
   <footer class="input-area">
     <form id="chatForm" class="input-form">
-      <input id="userInput" type="text" placeholder="メッセージを入力…" />
+      <input id="userInput" type="text" placeholder="メッセージを入力…" autocomplete="off" />
       <button id="sendButton" type="submit">送信</button>
       <button id="speakButton" type="button">🔊</button>
     </form>
   </footer>
 </div>
 
-<!-- 🎯 ポップアップ API KEY 入力 -->
+<!-- APIキー入力モーダル -->
 <div id="apiKeyModal" class="modal-backdrop">
   <div class="modal">
-    <h3>OpenAI APIキーを入力</h3>
+    <h3>OpenAI API キーを入力</h3>
     <input id="apiKeyInput" type="password" placeholder="sk-..." />
     <button id="saveApiKeyButton">保存して開始</button>
   </div>
 </div>
 
 <script>
+  // ===== 画面高さを innerHeight に合わせる（iPhone Safari/Chrome 対策） =====
+  function adjustAppHeight() {
+    const app = document.getElementById("app");
+    if (!app) return;
+    app.style.height = window.innerHeight + "px";
+  }
+  window.addEventListener("load", adjustAppHeight);
+  window.addEventListener("resize", adjustAppHeight);
+  window.addEventListener("orientationchange", adjustAppHeight);
+
+  // ===== Chat / API 共通 =====
   const STORAGE_KEY = "openai_api_key";
   const API_URL = "https://api.openai.com/v1/chat/completions";
   const MODEL = "gpt-4o-mini";
 
-  const messagesEl = document.getElementById("messages");
-  const sendButton = document.getElementById("sendButton");
-  const userInput = document.getElementById("userInput");
+  const messagesEl  = document.getElementById("messages");
+  const userInput   = document.getElementById("userInput");
+  const sendButton  = document.getElementById("sendButton");
   const speakButton = document.getElementById("speakButton");
+
   let lastAssistantMessage = "";
 
   const chatHistory = [{
     role: "system",
-    content: "あなたは優しく明るく中性的なアシスタント。返答は短く、自然な会話調で。"
+    content: "あなたは優しく明るく、中性的な雰囲気のアシスタントです。返答は短めで、自然な会話調にしてください。"
   }];
 
   function scrollDown() {
@@ -215,7 +237,7 @@
 
     const time = document.createElement("div");
     time.className = "timestamp";
-    time.textContent = new Date().toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
+    time.textContent = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     bubble.appendChild(time);
 
     row.appendChild(bubble);
@@ -224,13 +246,16 @@
     return span;
   }
 
-  function getKey(){ return localStorage.getItem(STORAGE_KEY); }
+  function getKey()  { return localStorage.getItem(STORAGE_KEY); }
   function saveKey(k){ localStorage.setItem(STORAGE_KEY, k); }
-  function deleteKey(){ localStorage.removeItem(STORAGE_KEY); }
+  function clearKey(){ localStorage.removeItem(STORAGE_KEY); }
 
+  // ===== ChatGPT ストリーミング呼び出し =====
   async function callChatGPT(text) {
-    if (!getKey()) return showModal();
-    chatHistory.push({ role:"user", content:text });
+    const apiKey = getKey();
+    if (!apiKey) { showModal(); return; }
+
+    chatHistory.push({ role: "user", content: text });
 
     const span = addBubble("assistant");
     let acc = "";
@@ -240,18 +265,27 @@
 
     const res = await fetch(API_URL, {
       method: "POST",
-      headers: {"Content-Type":"application/json", "Authorization":"Bearer "+getKey()},
-      body: JSON.stringify({ model: MODEL, messages: chatHistory, stream: true })
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + apiKey
+      },
+      body: JSON.stringify({
+        model: MODEL,
+        messages: chatHistory,
+        stream: true
+      })
     });
 
-    const reader = res.body.getReader();
+    const reader  = res.body.getReader();
     const decoder = new TextDecoder();
 
     while (true) {
-      const {value, done} = await reader.read();
+      const { value, done } = await reader.read();
       if (done) break;
+
       const chunk = decoder.decode(value);
       const lines = chunk.split("\n").filter(l => l.startsWith("data: "));
+
       for (const line of lines) {
         if (line === "data: [DONE]") continue;
         const delta = JSON.parse(line.slice(6)).choices?.[0]?.delta?.content;
@@ -264,51 +298,61 @@
     }
 
     lastAssistantMessage = acc;
-    chatHistory.push({ role:"assistant", content:acc });
+    chatHistory.push({ role: "assistant", content: acc });
+
     userInput.disabled = false;
     sendButton.disabled = false;
   }
 
+  // ===== 音声再生 =====
   speakButton.addEventListener("click", () => {
     if (!lastAssistantMessage) return;
     const u = new SpeechSynthesisUtterance(lastAssistantMessage);
-    u.lang = "ja-JP"; u.pitch = 1.05; u.rate = 1.05;
+    u.lang = "ja-JP";
+    u.pitch = 1.05;
+    u.rate  = 1.05;
     speechSynthesis.cancel();
     speechSynthesis.speak(u);
   });
 
-  document.getElementById("chatForm").addEventListener("submit", e => {
+  // ===== 送信 =====
+  document.getElementById("chatForm").addEventListener("submit", (e) => {
     e.preventDefault();
     const text = userInput.value.trim();
     if (!text) return;
-    addBubble("user").textContent = text;
+
+    const me = addBubble("user");
+    me.textContent = text;
     userInput.value = "";
     callChatGPT(text);
   });
 
-  /* 🎯 APIキー モーダル制御 */
+  // ===== APIキー モーダル =====
   const modal = document.getElementById("apiKeyModal");
   function showModal(){ modal.style.display = "flex"; }
   function hideModal(){ modal.style.display = "none"; }
 
   document.getElementById("saveApiKeyButton").addEventListener("click", () => {
     const key = document.getElementById("apiKeyInput").value.trim();
-    if (!key) return alert("APIキーを入力してください");
+    if (!key) { alert("APIキーを入力してください。"); return; }
     saveKey(key);
     hideModal();
   });
 
   document.getElementById("clearKeyButton").addEventListener("click", () => {
-    deleteKey();
-    alert("APIキーを削除しました");
+    clearKey();
+    alert("APIキーを削除しました。再設定してください。");
     showModal();
   });
 
+  // ===== 初期表示 =====
   window.addEventListener("load", () => {
     if (!getKey()) showModal();
-    addBubble("assistant").textContent = "こんにちは！てっちゃんAIです。気軽に話しかけてね。";
+    const init = addBubble("assistant");
+    init.textContent = "こんにちは！てっちゃんAIです。気軽に話しかけてね。";
   });
 
+  // ===== PWA Service Worker =====
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("./service-worker.js");
   }
