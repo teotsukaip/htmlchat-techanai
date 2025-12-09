@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>てっちゃんAIとチャット</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #e5ddd5; }
+    .app { height: 100vh; max-width: 480px; margin: 0 auto; background: #e5ddd5; display: flex; flex-direction: column; border-left: 1px solid #ccc; border-right: 1px solid #ccc; }
+    .header { background: #075e54; color: #fff; padding: 10px 12px; display: flex; justify-content: space-between; }
+    .messages { flex: 1; padding: 10px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+    .message-row { display: flex; width: 100%; }
+    .message-row.user { justify-content: flex-end; }
+    .message-row.assistant { justify-content: flex-start; }
+    .bubble { max-width: 80%; padding: 8px 10px; border-radius: 16px; font-size: 14px; line-height: 1.4; white-space: pre-wrap; }
+    .bubble.user { background: #25d366; color: #fff; border-bottom-right-radius: 0; }
+    .bubble.assistant { background: #fff; color: #111; border-bottom-left-radius: 0; }
+    .timestamp { font-size: 10px; color: #666; margin-top: 2px; text-align: right; }
+    .input-area { padding: 6px; background: #f0f0f0; border-top: 1px solid #ccc; }
+    .input-form { display: flex; gap: 6px; }
+    .input-form input { flex: 1; padding: 8px; border-radius: 20px; border: 1px solid #ccc; font-size: 14px; }
+    .input-form button { padding: 8px 12px; border-radius: 20px; border: none; font-size: 14px; cursor: pointer; }
+    #sendButton { background: #25d366; color: white; }
+    #speakButton { background: #007aff; color: white; font-size: 16px; }
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: none; align-items: center; justify-content: center; z-index: 1000; }
+    .modal { background: #fff; padding: 16px; border-radius: 8px; width: 90%; max-width: 360px; }
+  </style>
+</head>
+<body>
+<div class="app">
+  <header class="header">
+    <div>🍺 てっちゃんAI ❤️</div>
+    <button id="clearKeyButton">KEY削除</button>
+  </header>
+
+  <main id="messages" class="messages"></main>
+
+  <footer class="input-area">
+    <form id="chatForm" class="input-form">
+      <input id="userInput" type="text" placeholder="メッセージを入力…" autocomplete="off" />
+      <button id="sendButton" type="submit">送信</button>
+      <button id="speakButton" type="button">🔊</button>
+    </form>
+  </footer>
+</div>
+
+<div id="apiKeyModal" class="modal-backdrop">
+  <div class="modal">
+    <h2>OpenAI API キーを入力</h2>
+    <input id="apiKeyInput" type="password" placeholder="sk-..." />
+    <button id="saveApiKeyButton">保存</button>
+  </div>
+</div>
+
+<script>
+  const STORAGE_KEY = "openai_api_key";
+  const API_URL = "https://api.openai.com/v1/chat/completions";
+  const MODEL = "gpt-4o-mini";
+
+  const chatHistory = [{
+    role: "system",
+    content: "あなたは優しくて明るくて中性的なアシスタント。返答は自然で短めの会話調で。"
+  }];
+
+  const messagesEl = document.getElementById("messages");
+  const userInput = document.getElementById("userInput");
+  const speakButton = document.getElementById("speakButton");
+  const sendButton = document.getElementById("sendButton");
+  let lastAssistantMessage = "";
+
+  function scrollSmooth() {
+    messagesEl.scrollTo({ top: messagesEl.scrollHeight, behavior: "smooth" });
+  }
+
+  function addBubble(role) {
+    const row = document.createElement("div");
+    row.className = "message-row " + role;
+
+    const bubble = document.createElement("div");
+    bubble.className = "bubble " + role;
+
+    const textSpan = document.createElement("span"); // ⬅ AIテキスト更新対象
+    bubble.appendChild(textSpan);
+
+    const time = document.createElement("div");
+    time.className = "timestamp";
+    time.textContent = new Date().toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+    bubble.appendChild(time);
+
+    row.appendChild(bubble);
+    messagesEl.appendChild(row);
+    scrollSmooth();
+    return textSpan; // ← コレに文字を追加していく
+  }
+
+  function getKey() { return localStorage.getItem(STORAGE_KEY); }
+  function saveKey(k) { localStorage.setItem(STORAGE_KEY, k); }
+  function deleteKey() { localStorage.removeItem(STORAGE_KEY); }
+
+  async function callChatGPT(text) {
+    const apiKey = getKey(); if (!apiKey) return showModal();
+    chatHistory.push({ role: "user", content: text });
+
+    const textSpan = addBubble("assistant");
+    let acc = "";
+
+    sendButton.disabled = true;
+    userInput.disabled = true;
+
+    const res = await fetch(API_URL, {
+      method: "POST",
+      headers: {"Content-Type": "application/json","Authorization": "Bearer " + apiKey},
+      body: JSON.stringify({ model: MODEL, messages: chatHistory, stream: true })
+    });
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      const chunk = decoder.decode(value);
+      const lines = chunk.split("\n").map(l => l.trim()).filter(l => l.startsWith("data: "));
+
+      for (const l of lines) {
+        if (l === "data: [DONE]") continue;
+        const delta = JSON.parse(l.replace("data: ", "")).choices?.[0]?.delta?.content;
+        if (delta) {
+          acc += delta;
+          textSpan.textContent = acc;   // ⬅ ストリーミング表示
+          scrollSmooth();
+        }
+      }
+    }
+
+    lastAssistantMessage = acc;
+    chatHistory.push({ role: "assistant", content: acc });
+
+    sendButton.disabled = false;
+    userInput.disabled = false;
+  }
+
+  // 🔊 音声再生（中性的）
+  function speak(text) {
+    const ut = new SpeechSynthesisUtterance(text);
+    ut.lang = "ja-JP"; ut.rate = 1.05; ut.pitch = 1.1;
+    speechSynthesis.cancel();
+    speechSynthesis.speak(ut);
+  }
+  speakButton.addEventListener("click", () => {
+    if (!lastAssistantMessage) return alert("AIの返答がまだありません。");
+    speak(lastAssistantMessage);
+  });
+
+  // 送信
+  document.getElementById("chatForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const text = userInput.value.trim();
+    if (!text) return;
+    const userSpan = addBubble("user");
+    userSpan.textContent = text;
+    userInput.value = "";
+    callChatGPT(text);
+  });
+
+  // APIキー UI
+  const modal = document.getElementById("apiKeyModal");
+  function showModal() { modal.style.display = "flex"; }
+  function hideModal() { modal.style.display = "none"; }
+  document.getElementById("saveApiKeyButton").addEventListener("click", () => {
+    const key = document.getElementById("apiKeyInput").value.trim();
+    if (!key) return alert("APIキーを入力してください。");
+    saveKey(key); hideModal();
+  });
+  document.getElementById("clearKeyButton").addEventListener("click", () => {
+    deleteKey(); alert("APIキーを削除しました"); showModal();
+  });
+
+  window.addEventListener("load", () => {
+    if (!getKey()) showModal();
+    const init = addBubble("assistant");
+    init.textContent = "こんにちは！てっちゃんAIです。気軽に話しかけてね。";
+  });
+</script>
+</body>
+</html>
