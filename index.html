@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <title>てっちゃんAIとチャット</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#075e54" />
   <style>
     * { box-sizing: border-box; }
     body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #e5ddd5; }
@@ -182,6 +184,11 @@
     const init = addBubble("assistant");
     init.textContent = "こんにちは！てっちゃんAIです。気軽に話しかけてね。";
   });
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("./service-worker.js");
+    });
+  }
 </script>
 </body>
 </html>
